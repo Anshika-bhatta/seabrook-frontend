@@ -105,21 +105,56 @@ async function fetchJSON<T>(
   return res.json();
 }
 
+export async function getDestinationsPage(params?: {
+  category?: string;
+  search?: string;
+  page?: number;
+  isFeatured?: boolean;
+}): Promise<PaginatedResponse<Destination>> {
+  const query = new URLSearchParams();
+  if (params?.category) query.set("category", params.category);
+  if (params?.search) query.set("search", params.search);
+  if (params?.page && params.page > 1) query.set("page", String(params.page));
+  if (params?.isFeatured !== undefined) {
+    query.set("is_featured", String(params.isFeatured));
+  }
+
+  const queryString = query.toString() ? `?${query.toString()}` : "";
+  return fetchJSON<PaginatedResponse<Destination>>(`/destinations/${queryString}`);
+}
+
+/**
+ * Fetches every destination matching the given filters, following
+ * pagination automatically. Use this for anything that needs the
+ * complete set — geo-matching, the map view — never just page 1.
+ */
+export async function getAllDestinations(params?: {
+  category?: string;
+  search?: string;
+  isFeatured?: boolean;
+}): Promise<Destination[]> {
+  const all: Destination[] = [];
+  let page = 1;
+
+  while (true) {
+    const data = await getDestinationsPage({ ...params, page });
+    all.push(...data.results);
+    if (!data.next) break;
+    page += 1;
+  }
+
+  return all;
+}
+
+/**
+ * @deprecated Prefer getAllDestinations (full set) or getDestinationsPage
+ * (single page with pagination metadata) depending on the use case.
+ */
 export async function getDestinations(params?: {
   category?: string;
   isFeatured?: boolean;
 }): Promise<Destination[]> {
-  const search = new URLSearchParams();
-  if (params?.category) search.set("category", params.category);
-  if (params?.isFeatured !== undefined) {
-    search.set("is_featured", String(params.isFeatured));
-  }
-
-  const query = search.toString() ? `?${search.toString()}` : "";
-  const data = await fetchJSON<PaginatedResponse<Destination>>(
-    `/destinations/${query}`
-  );
-  return data.results;
+  return getAllDestinations(params);
 }
 
 export async function getDestinationBySlug(

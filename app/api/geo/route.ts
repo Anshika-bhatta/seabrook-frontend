@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getDestinations, ApiError } from "@/lib/api";
+import { getAllDestinations, ApiError } from "@/lib/api";
 import { findNearestDestinations } from "@/lib/geo-match";
 
 export async function GET(request: NextRequest) {
@@ -40,7 +40,7 @@ export async function GET(request: NextRequest) {
 
   let destinations;
   try {
-    destinations = await getDestinations();
+    destinations = await getAllDestinations();
   } catch (err) {
     const status = err instanceof ApiError ? err.status : 502;
     return NextResponse.json(
