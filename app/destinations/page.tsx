@@ -1,10 +1,21 @@
 import Link from "next/link";
 import Image from "next/image";
-import { getDestinations } from "@/lib/api";
+import { getDestinations, getCategories } from "@/lib/api";
 import DestinationsMap from "@/components/DestinationsMap";
 
-export default async function DestinationsIndexPage() {
-  const destinations = await getDestinations();
+interface DestinationsIndexPageProps {
+  searchParams: Promise<{ category?: string }>;
+}
+
+export default async function DestinationsIndexPage({
+  searchParams,
+}: DestinationsIndexPageProps) {
+  const { category: activeCategory } = await searchParams;
+
+  const [destinations, categories] = await Promise.all([
+    getDestinations(activeCategory ? { category: activeCategory } : undefined),
+    getCategories(),
+  ]);
 
   return (
     <div className="max-w-5xl mx-auto py-16 px-6">
@@ -13,6 +24,32 @@ export default async function DestinationsIndexPage() {
         {destinations.length} place{destinations.length === 1 ? "" : "s"} to
         explore.
       </p>
+
+      <div className="mt-6 flex flex-wrap gap-2">
+        <Link
+          href="/destinations"
+          className={`rounded-full px-4 py-1.5 text-sm border transition-colors ${
+            !activeCategory
+              ? "bg-foreground text-background border-foreground"
+              : "border-black/10 dark:border-white/10 hover:border-black/20 dark:hover:border-white/20"
+          }`}
+        >
+          All
+        </Link>
+        {categories.map((cat) => (
+          <Link
+            key={cat.id}
+            href={`/destinations?category=${cat.slug}`}
+            className={`rounded-full px-4 py-1.5 text-sm border transition-colors ${
+              activeCategory === cat.slug
+                ? "bg-foreground text-background border-foreground"
+                : "border-black/10 dark:border-white/10 hover:border-black/20 dark:hover:border-white/20"
+            }`}
+          >
+            {cat.name}
+          </Link>
+        ))}
+      </div>
 
       {destinations.length > 0 && (
         <div className="mt-8 h-[400px] rounded-2xl overflow-hidden border border-black/10 dark:border-white/10">
@@ -55,7 +92,7 @@ export default async function DestinationsIndexPage() {
 
       {destinations.length === 0 && (
         <p className="mt-10 text-zinc-500 dark:text-zinc-400">
-          No destinations yet — add some in the Django admin.
+          No destinations found{activeCategory ? " in this category" : ""}.
         </p>
       )}
     </div>

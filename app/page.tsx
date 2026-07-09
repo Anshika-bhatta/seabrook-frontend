@@ -1,40 +1,100 @@
+import Link from "next/link";
 import Image from "next/image";
-import GeoExperienceLoader from "@/components/GeoExperienceLoader";
+import { getDestinations, getCategories } from "@/lib/api";
+import DestinationsMap from "@/components/DestinationsMap";
 
-export default function Home() {
+interface DestinationsIndexPageProps {
+  searchParams: Promise<{ category?: string }>;
+}
+
+export default async function DestinationsIndexPage({
+  searchParams,
+}: DestinationsIndexPageProps) {
+  const { category: activeCategory } = await searchParams;
+
+  const [destinations, categories] = await Promise.all([
+    getDestinations(activeCategory ? { category: activeCategory } : undefined),
+    getCategories(),
+  ]);
+
   return (
-    <div className="flex flex-col flex-1 items-center justify-center bg-zinc-50 font-sans dark:bg-black">
-      <main className="flex flex-1 w-full max-w-3xl flex-col items-center justify-between py-32 px-16 bg-white dark:bg-black sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={100}
-          height={20}
-          priority
-        />
+    <div className="max-w-5xl mx-auto py-16 px-6">
+      <h1 className="text-3xl font-semibold">Destinations</h1>
+      <p className="text-zinc-500 dark:text-zinc-400 mt-2">
+        {destinations.length} place{destinations.length === 1 ? "" : "s"} to
+        explore.
+      </p>
 
-        <GeoExperienceLoader />
-
-        <div className="flex flex-col items-center gap-6 text-center sm:items-start sm:text-left">
-          <h1 className="max-w-xs text-3xl font-semibold leading-10 tracking-tight text-black dark:text-zinc-50">
-            Discover your next coastal escape.
-          </h1>
-          <p className="max-w-md text-lg leading-8 text-zinc-600 dark:text-zinc-400">
-            Seabrook, Texas — flights, hotels, and things to do, matched to
-            wherever you&apos;re traveling from.
-          </p>
-        </div>
-
-        <div className="flex flex-col gap-4 text-base font-medium sm:flex-row">
-          <a
-            className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-foreground px-5 text-background transition-colors hover:bg-[#383838] dark:hover:bg-[#ccc] md:w-[158px]"
-            href="/destinations"
+      <div className="mt-6 flex flex-wrap gap-2">
+        <Link
+          href="/destinations"
+          className={`rounded-full px-4 py-1.5 text-sm border transition-colors ${
+            !activeCategory
+              ? "bg-foreground text-background border-foreground"
+              : "border-black/10 dark:border-white/10 hover:border-black/20 dark:hover:border-white/20"
+          }`}
+        >
+          All
+        </Link>
+        {categories.map((cat) => (
+          <Link
+            key={cat.id}
+            href={`/destinations?category=${cat.slug}`}
+            className={`rounded-full px-4 py-1.5 text-sm border transition-colors ${
+              activeCategory === cat.slug
+                ? "bg-foreground text-background border-foreground"
+                : "border-black/10 dark:border-white/10 hover:border-black/20 dark:hover:border-white/20"
+            }`}
           >
-            Explore destinations
-          </a>
+            {cat.name}
+          </Link>
+        ))}
+      </div>
+
+      {destinations.length > 0 && (
+        <div className="mt-8 h-[400px] rounded-2xl overflow-hidden border border-black/10 dark:border-white/10">
+          <DestinationsMap destinations={destinations} />
         </div>
-      </main>
+      )}
+
+      <div className="mt-10 grid grid-cols-1 sm:grid-cols-2 gap-6">
+        {destinations.map((dest) => (
+          <Link
+            key={dest.id}
+            href={`/destinations/${dest.slug}`}
+            className="group rounded-2xl border border-black/10 dark:border-white/10 overflow-hidden hover:border-black/20 dark:hover:border-white/20 transition-colors"
+          >
+            {dest.image ? (
+              <Image
+                src={dest.image}
+                alt={dest.name}
+                width={400}
+                height={225}
+                className="w-full h-40 object-cover"
+              />
+            ) : (
+              <div className="w-full h-40 bg-zinc-100 dark:bg-zinc-900" />
+            )}
+            <div className="p-4">
+              <p className="text-xs text-zinc-500 dark:text-zinc-400 uppercase tracking-wide">
+                {dest.category.name}
+              </p>
+              <h2 className="font-medium mt-1 group-hover:underline">
+                {dest.name}
+              </h2>
+              <p className="text-sm text-zinc-500 dark:text-zinc-400 mt-1">
+                {dest.location.city}, {dest.location.country}
+              </p>
+            </div>
+          </Link>
+        ))}
+      </div>
+
+      {destinations.length === 0 && (
+        <p className="mt-10 text-zinc-500 dark:text-zinc-400">
+          No destinations found{activeCategory ? " in this category" : ""}.
+        </p>
+      )}
     </div>
   );
 }
