@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getDestinations, ApiError } from "@/lib/api";
-import { findNearestDestination } from "@/lib/geo-match";
+import { findNearestDestinations } from "@/lib/geo-match";
 
 export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url);
@@ -54,9 +54,9 @@ export async function GET(request: NextRequest) {
     );
   }
 
-  const match = findNearestDestination(lat, lon, destinations);
+  const matches = findNearestDestinations(lat, lon, destinations, 3);
 
-  if (!match) {
+  if (matches.length === 0) {
     return NextResponse.json(
       { matched: false, reason: "no_destinations" },
       { status: 200 }
@@ -71,7 +71,9 @@ export async function GET(request: NextRequest) {
       city: headerCity ? decodeURIComponent(headerCity) : null,
       country: headerCountry ?? null,
     },
-    destination: match.destination,
-    distanceKm: Math.round(match.distanceKm),
+    matches: matches.map((m) => ({
+      destination: m.destination,
+      distanceKm: Math.round(m.distanceKm),
+    })),
   });
 }

@@ -3,6 +3,11 @@
 import { useEffect, useState } from "react";
 import type { Destination } from "@/lib/api";
 
+interface GeoMatch {
+  destination: Destination;
+  distanceKm: number;
+}
+
 interface GeoApiResponse {
   matched: boolean;
   reason?: string;
@@ -13,8 +18,7 @@ interface GeoApiResponse {
     city: string | null;
     country: string | null;
   };
-  destination?: Destination;
-  distanceKm?: number;
+  matches?: GeoMatch[];
 }
 
 type LoadState = "loading" | "matched" | "unmatched" | "error";
@@ -40,7 +44,11 @@ export default function GeoExperienceLoader() {
         if (cancelled) return;
 
         setResult(data);
-        setState(data.matched ? "matched" : "unmatched");
+        setState(
+          data.matched && data.matches && data.matches.length > 0
+            ? "matched"
+            : "unmatched"
+        );
       } catch {
         if (!cancelled) setState("error");
       }
@@ -65,37 +73,49 @@ export default function GeoExperienceLoader() {
     return null;
   }
 
-  if (!result?.destination) return null;
+  if (!result?.matches || result.matches.length === 0) return null;
 
-  const { destination, distanceKm, visitor } = result;
-  const description = destination.description ?? "";
-  const truncated =
-    description.length > 160
-      ? `${description.slice(0, 160)}…`
-      : description;
+  const { matches, visitor } = result;
 
   return (
-    <div className="w-full max-w-3xl mx-auto rounded-2xl border border-black/10 dark:border-white/10 p-6 my-8">
+    <div className="w-full max-w-3xl mx-auto my-8">
       <p className="text-sm text-zinc-500 dark:text-zinc-400">
-        {visitor?.city ? `Traveling from ${visitor.city}?` : "Nearby pick"}
+        {visitor?.city ? `Traveling from ${visitor.city}?` : "Near you"}
       </p>
-      <h2 className="text-2xl font-semibold mt-1">
-        Explore {destination.name}
+      <h2 className="text-2xl font-semibold mt-1 mb-4">
+        Places worth the trip
       </h2>
-      {truncated && (
-        <p className="text-zinc-600 dark:text-zinc-400 mt-2">{truncated}</p>
-      )}
-      {typeof distanceKm === "number" && (
-        <p className="text-xs text-zinc-400 mt-2">
-          ~{distanceKm.toLocaleString()} km away
-        </p>
-      )}
-      <a
-        href={`/destinations/${destination.slug}`}
-        className="inline-block mt-4 rounded-full bg-foreground text-background px-5 py-2 text-sm font-medium"
-      >
-        View destination
-      </a>
+
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+        {matches.map(({ destination, distanceKm }) => {
+          const description = destination.description ?? "";
+          const truncated =
+            description.length > 100
+              ? `${description.slice(0, 100)}…`
+              : description;
+
+          return (
+            
+              key={destination.id}
+              href={`/destinations/${destination.slug}`}
+              className="rounded-2xl border border-black/10 dark:border-white/10 p-5 hover:border-black/20 dark:hover:border-white/20 transition-colors"
+            >
+              <p className="text-xs text-zinc-500 dark:text-zinc-400 uppercase tracking-wide">
+                {destination.category.name}
+              </p>
+              <h3 className="font-medium mt-1">{destination.name}</h3>
+              {truncated && (
+                <p className="text-sm text-zinc-600 dark:text-zinc-400 mt-2">
+                  {truncated}
+                </p>
+              )}
+              <p className="text-xs text-zinc-400 mt-3">
+                ~{distanceKm.toLocaleString()} km away
+              </p>
+            </a>
+          );
+        })}
+      </div>
     </div>
   );
 }
