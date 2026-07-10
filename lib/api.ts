@@ -182,8 +182,40 @@ export async function getBookingLinksForDestination(
   return data.results;
 }
 
-export async function getLandingPageBySlug(slug: string) {
-  return fetchJSON(`/landing-pages/${slug}/`);
+export interface LandingPageDestination {
+  id: number;
+  name: string;
+  slug: string;
+  latitude: string;
+  longitude: string;
+  address: string;
+}
+
+export interface LandingPage {
+  id: number;
+  destination: LandingPageDestination;
+  title: string;
+  slug: string;
+  h1_heading: string;
+  content: string;
+  meta_description: string;
+  meta_keywords: string;
+  canonical_url: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export async function getLandingPages(): Promise<LandingPage[]> {
+  const data = await fetchJSON<PaginatedResponse<LandingPage>>(
+    "/landing-pages/"
+  );
+  return data.results;
+}
+
+export async function getLandingPageBySlug(
+  slug: string
+): Promise<LandingPage> {
+  return fetchJSON<LandingPage>(`/landing-pages/${slug}/`);
 }
 
 export { ApiError };
