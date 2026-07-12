@@ -1,9 +1,52 @@
 import { notFound } from "next/navigation";
 import Image from "next/image";
+import Link from "next/link";
 import {
   getDestinationBySlug,
   getBookingLinksForDestination,
+  getAllDestinations,
+  type Destination,
 } from "@/lib/api";
+import { findNearestDestinations } from "@/lib/geo-match";
+import PersonalizedBookingLinks from "@/components/PersonalizedBookingLinks";
+
+async function getRelatedDestinations(
+  current: Destination
+): Promise<Destination[]> {
+  const all = await getAllDestinations();
+  const others = all.filter((d) => d.id !== current.id);
+
+  const currentLat = parseFloat(current.latitude);
+  const currentLon = parseFloat(current.longitude);
+
+  const sameCategory = others.filter(
+    (d) => d.category.slug === current.category.slug
+  );
+
+  const nearestInCategory = findNearestDestinations(
+    currentLat,
+    currentLon,
+    sameCategory,
+    3
+  ).map((m) => m.destination);
+
+  const related = [...nearestInCategory];
+
+  if (related.length < 3) {
+    const remaining = others.filter(
+      (d) => !related.some((r) => r.id === d.id)
+    );
+    const fillIn = findNearestDestinations(
+      currentLat,
+      currentLon,
+      remaining,
+      3 - related.length
+    ).map((m) => m.destination);
+    related.push(...fillIn);
+  }
+
+  return related;
+}
 
 export default async function DestinationPage(
   props: PageProps<"/destinations/[slug]">
@@ -17,7 +60,10 @@ export default async function DestinationPage(
     notFound();
   }
 
-  const bookingLinks = await getBookingLinksForDestination(destination.id);
+  const [bookingLinks, relatedDestinations] = await Promise.all([
+    getBookingLinksForDestination(destination.id),
+    getRelatedDestinations(destination),
+  ]);
 
   const amenities = destination.amenities ?? [];
   const gallery = [...(destination.gallery ?? [])].sort(
@@ -98,22 +144,43 @@ export default async function DestinationPage(
         </div>
       )}
 
-      {bookingLinks.length > 0 && (
-        <div className="mt-10 flex flex-wrap gap-3">
-          {bookingLinks
-            .filter((link) => link.is_active)
-            .sort((a, b) => a.display_order - b.display_order)
-            .map((link) => (
-              <a
-                key={link.id}
-                href={link.booking_url}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="rounded-full bg-foreground text-background px-5 py-2 text-sm font-medium"
+      <PersonalizedBookingLinks
+        destination={destination}
+        bookingLinks={bookingLinks}
+      />
+
+      {relatedDestinations.length > 0 && (
+        <div className="mt-14 pt-10 border-t border-black/10 dark:border-white/10">
+          <h2 className="text-xl font-semibold">You might also like</h2>
+          <div className="mt-5 grid grid-cols-1 sm:grid-cols-3 gap-4">
+            {relatedDestinations.map((related) => (
+              <Link
+                key={related.id}
+                href={`/destinations/${related.slug}`}
+                className="group rounded-2xl border border-black/10 dark:border-white/10 overflow-hidden hover:border-black/20 dark:hover:border-white/20 transition-colors"
               >
-                {link.label || `Book via ${link.provider_display}`}
-              </a>
+                {related.image ? (
+                  <Image
+                    src={related.image}
+                    alt={related.name}
+                    width={300}
+                    height={170}
+                    className="w-full h-28 object-cover"
+                  />
+                ) : (
+                  <div className="w-full h-28 bg-zinc-100 dark:bg-zinc-900" />
+                )}
+                <div className="p-3">
+                  <p className="text-xs text-zinc-500 dark:text-zinc-400 uppercase tracking-wide">
+                    {related.category.name}
+                  </p>
+                  <h3 className="text-sm font-medium mt-1 group-hover:underline">
+                    {related.name}
+                  </h3>
+                </div>
+              </Link>
             ))}
+          </div>
         </div>
       )}
     </div>

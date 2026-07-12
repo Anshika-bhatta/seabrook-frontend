@@ -57,9 +57,11 @@ export interface Destination {
   address: string;
   image: string | null;
   website: string;
+  opening_hours?: string;
   is_featured: boolean;
   is_active: boolean;
   amenities?: Amenity[];
+  booking_links?: BookingLink[];
   gallery?: DestinationImage[];
   created_at?: string;
   updated_at?: string;

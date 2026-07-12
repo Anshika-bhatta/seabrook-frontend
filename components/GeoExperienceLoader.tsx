@@ -57,7 +57,7 @@ export default function GeoExperienceLoader() {
     if (typeof navigator !== "undefined" && "geolocation" in navigator) {
       navigator.geolocation.getCurrentPosition(
         (pos) => fetchGeo(pos.coords.latitude, pos.coords.longitude),
-        () => fetchGeo(), // permission denied — fall back to IP headers only
+        () => fetchGeo(),
         { timeout: 5000 }
       );
     } else {
@@ -96,6 +96,7 @@ export default function GeoExperienceLoader() {
 
           return (
             
+            <a
               key={destination.id}
               href={`/destinations/${destination.slug}`}
               className="rounded-2xl border border-black/10 dark:border-white/10 p-5 hover:border-black/20 dark:hover:border-white/20 transition-colors"
